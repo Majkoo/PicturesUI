@@ -20,14 +20,42 @@ export class HttpErrorInterceptorService implements HttpInterceptor {
     private message: MessageService,
     private sessionStorageService: SessionStorageServiceService,
     ) { }
+
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
     return next.handle(req)
       .pipe(
         retryWhen((error) => {
           return error.pipe(
             mergeMap((error, index) => {
-              if ((index < retryCount) && !((req.method === "GET") && (error.status === 404))) return of(error).pipe(delay(delayMs));
+
+              if (req.method == "GET" || error.status === 404) {
+                throw error;
+              }
+
+              if (error.error) {
+                if (error.error.startsWith("inappropriate picture")) {
+                  return throwError(() => {
+                    const errorMessage = error.error.replace(
+                      "inappropriate picture",
+                      "niewłaściwy obrazek")
+                      .replace("Adult", "Dla dorosłych")
+                      .replace("Medical", "Zbyt dużo anatomicznych szczegółów")
+                      .replace("Racy", "Niewłaściwy")
+                      .replace("Violence", "Przemoc");
+
+                    this.message.add({
+                      severity:'error',
+                      summary: 'Niepowodzenie',
+                      detail: `Nie możesz zapostować tego obrazka: ${errorMessage}.`
+                    });
+                  });
+                }
+                throw error;
+              }
+
+              if ((index < retryCount)) return of(error).pipe(delay(delayMs));
               throw error;
+
             })
           );
         }),
@@ -88,11 +116,13 @@ export class HttpErrorInterceptorService implements HttpInterceptor {
       }
       default: {
         if (req.url.endsWith('/picture/create')) {
-          this.message.add({
-            severity:'error',
-            summary: 'Niepowodzenie',
-            detail: 'Nie udało się zapostować obrazka. Przepraszamy za utrudnienia.'
-          });
+          return throwError(() => {
+            this.message.add({
+              severity:'error',
+              summary: 'Niepowodzenie',
+              detail: 'Nie udało się zapostować obrazka. Przepraszamy za utrudnienia.'
+            });
+          })
         }
         if (status.toString().startsWith("5")) {
           return throwError(() => {

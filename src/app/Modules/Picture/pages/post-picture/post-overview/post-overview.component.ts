@@ -15,7 +15,9 @@ export class PostOverviewComponent implements OnInit {
 
   imgDataUrl: string = "";
   awaitSubmit = false;
+  invalidData = false;
   picturePreview?: PictureModel;
+
 
   constructor(
     private postPictureService: PostPictureServiceService,
@@ -70,21 +72,20 @@ export class PostOverviewComponent implements OnInit {
     }
 
     this.awaitSubmit = true;
-    this.httpService.postPictureRequest(formData)
-      .subscribe({
-        next: () => {
-          this.messageService.add({
-            severity: 'success',
-            summary: 'Sukces',
-            detail: `"${this.postPictureService.name}" został zapostowany pomyślnie!`
-          });
-          this.awaitSubmit = false;
-          this.locationService.goHomepage();
-        },
-        error: () => {
-          this.awaitSubmit = false;
-        }
-      });
+    if (!this.invalidData) {
+      this.httpService.postPictureRequest(formData)
+        .subscribe({
+          next: () => {
+            this.messageService.add({
+              severity: 'success',
+              summary: 'Sukces',
+              detail: `"${this.postPictureService.name}" został zapostowany pomyślnie!`
+            });
+            this.awaitSubmit = false;
+            this.locationService.goHomepage();
+          }
+        });
+    }
   }
 
 
